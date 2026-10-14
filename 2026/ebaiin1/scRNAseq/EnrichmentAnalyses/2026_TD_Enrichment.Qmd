@@ -1,0 +1,550 @@
+---
+title: "EB3I n1 2026 scRNAseq<br>Enrichment analyses"
+author:
+  - name: "<i>EB3I n1 scRNAseq Team 2026</i>"
+  - name: "<i>Bastien JOB</i>"
+    email: "bastien.job@inserm.fr,bastien.job@gustaveroussy.fr"
+  - name: "<i>Thibault DAYRIS</i>"
+    email: "thibault.dayris@gustaveroussy.fr"
+  - name: "<i>Margot ZAHM</i>"
+    email: "margot.zahm@inserm.fr,margot.zahm@cnrs.fr"
+lightbox: 
+  match: auto  ## Quarto internal functionality to display a screen maxed-out version of images and plots by click
+bibliography: Enrichment.bib
+format:
+  html:
+    fig_width: 8
+    fig_height: 6
+    embed-fonts: true
+    number-sections: true  ## Adds number to headers (sections)
+    embed-resources: true  ## Make a self-contained HTML
+    anchor-sections: true  ## Create HTML anchors for all section titles
+    theme: flatly  ## CSS theme for the HTML page
+    syntax-highlighting: tango  ## Theme for the code chunks
+    toc: true  ## Add a table of content
+    toc-location: left  ## Position of TOC on the left side
+    collapsed: true  ## By default, the TOC is folded
+    grid:
+      body-width: 1600px  ## Extends the main body to fill the right space up to 1600px
+      margin-width: 0px
+    smooth-scroll: true ## Smooth scroll of the HTML page
+    code-fold: show  ## Show (unfold) code by default 
+    code-tools:
+      source: true  ## Show the upper-right "Code" button to allow downloading this source
+      toggle: true
+    code-block-bg: true  ## Use a (default grey) background for code chunks
+    code-block-border-left: "#31BAE9"  ## Use a (here electric blue) left boarder for code chunks
+    code-overflow: wrap  ## Wrap long code lines (should not be in use due to the high grid:body-width value, but just in case it is deactivated)
+    code-line-numbers: true  ## Add line number to the left
+    code-copy: true  ## Adds a button to copy chunk code to clipboard
+    code-annotations: hover  ## For code annotation, show values in mouseover
+    html-table-processing: none  ## Do not apply Quarto-specific rendering schemes for HTML tables
+    echo: true
+    fig-align: center
+filters: 
+ - ../Quarto_template_2026/foldablecodeblock.lua  ## LUA code for foldable code output
+---
+
+<!-- ADDITIONAL CODES / HACKS -->
+
+<!-- CSS code to center the QMD title -->
+
+```{=html}
+<style>
+#title-block-header .title {
+  text-align: center;
+}
+</style>
+```
+
+<!-- CSS code to center the imported images -->
+
+```{=html}
+<style>
+.center-image {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+```
+
+<!-- CSS code to displace the clipboard copy button slightly to the left so that it does not overlap code annotations -->
+
+```{=html}
+<style>
+.code-with-filename .code-copy-button {
+  right: 2.5rem !important;
+}
+</style>
+```
+
+<!-- HTML code to force table borders -->
+
+```{=html}
+<style>
+td, th {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+</style>
+```
+
+<!-- BODY -->
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+![](../Quarto_template_2026/eb3i_banner.png){.center-image}
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# Purpose of this session {#purpose-of-this-session}
+
+This file describes the different steps to perform the **enrichment part** of the **single cell RNAseq** data analysis training course for the **EB3I n1 2026**, covering these steps :
+
+-   **Load** a **gene set** from different sources
+-   **Perform** enrichment analysis
+-   **Plot** results
+
+**Input data**: A result of differential expression analysis
+
+**Output data**: A list of gene set enriched
+
+A lot of different packages exist. Here, you will discover [clusterProfiler](https://yulab-smu.top/biomedical-knowledge-mining-book/), a widely used R package to perform enrichment analyses. You will also discover [AUCell](https://www.bioconductor.org/packages//3.18/bioc/vignettes/AUCell/inst/doc/AUCell.html) to perform cell based enrichment analyses.
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# Start RStudio
+
+Using the [OpenOnDemand/Rstudio cheat sheet](https://moodle.france-bioinformatique.fr/pluginfile.php/1475/mod_folder/content/0/OoD_R_Rstudio.html), connect to the [OpenOnDemand portal](https://ondemand.cluster.france-bioinformatique.fr/) and create a Rstudio session with the right resource requirements, thanks to the cheat sheet.
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# Environment
+
+## Set parameters
+
+We now set common parameters as new variables, once and for all for this session :
+
+::: callout-warning
+**DO NOT** just run this with `ebaii_sc_teachers` project name as-is, put **YOURS** !
+:::
+
+```{r}
+#| label: fs_set_pjname
+#| filename: fs_set_pjname
+
+## Set your project name
+project_name <- "ebaii_sc_teachers" # <1>
+
+## Control if the project_name exists on the cluster
+cat('PATH CHECK : ', dir.exists(paste0('/shared/projects/', project_name))) # <2>
+
+## Seed for the GSEA
+my_seed <- 42 # <3>
+```
+
+1.  Uncomment this line and specify YOUR project name
+2.  Should return "PATH CHECK : TRUE" if project_name exists
+3.  You can choose another value before running analysis but if you change it, you'll get different results
+
+## Load all needed libraries
+
+We load the packages we will need for the analysis.
+
+```{r, message=FALSE}
+#| label: load_environment 
+#| filename: load_environment  
+
+## TODO : libraries to load
+library(Seurat) # <1>
+library(clusterProfiler, quietly = TRUE) # <2> 
+library(org.Mm.eg.db, quietly = TRUE) # <3>
+library(msigdbr, quietly = TRUE) # <4>
+library(dplyr, quietly = TRUE) # <5>
+library(ggplot2, quietly = TRUE)  # <6>
+```
+
+1.  For scRNAseq analyses
+2.  Perform enrichment analysis [@yuBiomedicalKnowledgeMining2025]
+3.  Mouse genes with identifier correspondences. Other organisms are accessible []
+4.  Package to download MSigDB database from the web.
+5.  Perform table modifications
+6.  Perform graphics
+
+## Load your data
+
+**TO DO** based on bjob function
+
+```{r}
+#| label: dirty_load
+#| filename: dirty_load
+
+scdata <- readRDS("/shared/projects/2621_eb3in1_2026/atelier_scrnaseq/DATA_BACKUP/INTERMEDIATE/12_TD3A.TDCT_S5_Integrated_12926.3886.RDS")
+scdata[["RNA"]] <- JoinLayers(scdata[["RNA"]])
+DimPlot(scdata)
+
+```
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# Load gene set {#sec-geneset}
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What is a gene set?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+It is a list of genes linked to a biological insight like a function, a transcription factor, a cell type...
+:::
+
+There are multiple ways for loading them.
+
+## From R packages
+The R package clusterProfiler can work with compatible database packages such as the [orgDB packages](https://bioconductor.org/packages/3.23/BiocViews.html#___OrgDb) (here its `org.Mm.eg.db`). This package contains the [Gene Ontology database](https://geneontology.org/docs/ontology-documentation/).
+
+```{r}
+#| label: load_geneset_r
+#| filename: load_geneset_r
+
+# Show Gene Ontology database from the package org.Mm.eg
+xx <- as.list(org.Mm.egGO2EG)
+
+# It is not a table but a list of ontologies, each containing ENTREZID and source of evidence
+xx[[1]]
+```
+
+## From the Web
+For other databases such as [KEGG](https://www.genome.jp/kegg/pathway.html) and [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/index.jsp), clusterProfiler can access them from the web using package dependencies.
+
+```{r}
+#| label: load_geneset_web
+#| filename: load_geneset_web
+
+# Load the MSigDB database for the mouse organism
+# If db_species not specified, it loads the human database with the mouse ortholog genes
+go_from_web <- msigdbr(species = 'mouse', collection = "M5", subcollection = "GO:BP", db_species = 'MM')
+
+# Prints the beginning of the table
+knitr::kable(head(go_from_web))
+
+# Prints the list of gene ontologies in the database
+knitr::kable(head(table(go_from_web$gs_name), 5), col.names = c("term", "nb of genes"))
+```
+
+::: callout-important
+## Warning
+
+Loading databases from **R** or the **internet** is an **obstacle to reproducibility** :
+
+-   updating R packages changes database contents
+-   databases on the internet are updated frequently
+
+Enrichment analyses are **highly sensitive** to database changes.
+:::
+
+## From file
+
+This file can come from a loaded database or can be homemade by taking gene lists from publications. The usual format is [GMT](https://docs.gsea-msigdb.org/#GSEA/Data_Formats/#gmt-gene-matrix-transposed-file-format-gmt) : a tabulated text file with the first column as the name of the gene list, the second column as a description of this gene list and as many columns as the number of genes in this gene list.
+
+You can also work from a classic table like the one printed below.
+
+```{r}
+#| label: load_geneset_file
+#| filename: load_geneset_file
+
+# Loads the data from a file stored
+go_from_file <- read.gmt("m5.go.bp.v2026.1.Mm.symbols.gmt")
+
+# Prints the beginning of a table
+knitr::kable(head(go_from_file))
+
+# Prints some terms and the number of genes that compose those terms
+knitr::kable(head(table(go_from_file$term), 5), col.names = c("term", "nb of genes"))
+```
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+Is the size number of a gene set important and why?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+Yes it is important because gene sets with a low number of genes (below 10-20) decrease the performance of enrichment analyses. On the other hand, a gene set with too many genes (above 2000-5000) corresponds to a too generic function.
+
+clusterProfiler uses minGSSize and maxGSSize parameters to select only gene set in a certain range of size.
+:::
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# Perform the enrichment analyses
+
+```{r, message = FALSE}
+markers_list <- FindAllMarkers(object = scdata,
+                            only.pos = FALSE, 
+                            min.pct = 0.25, 
+                            thresh.use = 0,
+                            verbose = FALSE)
+```
+
+::: {.panel-tabset}
+
+# Over Representation Analyses (ORA)
+
+## Prepare your list of genes
+
+You already have your gene set. You now need to extract genes from your differential expression analyses before running your enrichment analyses.
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What kind of input gene list is needed to run ORA?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+A list of genes of interest **and** a background list of genes. Be careful to use the same gene identifiers as what is used for the gene set (ie. gene symbol, ENSEMBL ID, ENTREZ ID...).
+:::
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What metric(s) could be used to select a list of genes?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+- p_val_adj to select significative DEGs
+- avg_log2FC to select genes that are highly differential between the compared samples
+- pct.1 of cells expressing the gene to get genes that are expressed in a high number of cells. The cut-off used in `FindMarker()` is usually sufficient.
+
+Be careful on parameters used in `FindMarker()` as it could already filter out genes.
+:::
+
+```{r}
+#| label: gene_list_ora
+#| filename: gene_list_ora
+
+# Select background genes, ie. all expressed genes in the experiment
+background <- markers_list$gene
+
+# Select genes up
+list_ora_up <- markers_list |>
+               filter(cluster == "1") |>
+               filter(p_val_adj < 0.01) |>
+               filter(avg_log2FC > 1)
+
+list_ora_up <- rownames(list_ora_up)
+
+# Select genes down
+list_ora_down <- markers_list |>
+                 filter(cluster == "1") |>
+                 filter(p_val_adj < 0.01) |>
+                 filter(avg_log2FC < -1)
+
+list_ora_down <- rownames(list_ora_down)
+
+print(paste("There are", length(list_ora_up), "genes up and", length(list_ora_down), "genes down selected to run further analyses"))
+```
+
+## Perform the enrichment
+
+The Over Representation Analyses can be performed with the `enricher()` function of clusterProfiler. Derivative functions such as `enrichGO()`, `enrichKEGG()` can be used for databases that can be loaded from packages. But you lose reproducibility with these functions when you change the package version.
+
+```{r}
+#| label: function_ora
+#| filename: function_ora
+
+?enricher
+```
+
+```{r}
+#| label: perform_ora
+#| filename: perform_ora
+
+ora_up <- enricher(list_ora_up, universe = background, TERM2GENE = go_from_file)
+
+dotplot(ora_up, title = "GO BP ORA on genes up in cluster 1 vs all")
+
+ora_down <- enricher(list_ora_down, universe = background, TERM2GENE = go_from_file)
+
+dotplot(ora_down, title = "GO BP ORA on genes down in cluster 1 vs all")
+
+print(nrow(ora_up), "GO terms are enriched in up regulated genes and", nrow(ora_down), "GO terms are enriched in down regulated genes.")
+```
+
+# Gene Set Enrichment Analyses (GSEA)
+
+## Prepare your list of genes
+
+You already have your gene set. You now need to extract genes from your differential expression analyses before running your enrichment analyses.
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What kind of input gene list is needed to run GSEA?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+Any list of genes with a metric. Be careful to use the same gene identifiers as what is used for the gene set (ie. gene symbol, ENSEMBL ID, ENTREZ ID...).
+:::
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What metric could be used in the gene list?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+Usually it is the average log2FoldChange that is used.
+:::
+
+::: callout-important
+## Warning
+
+**DO NOT** filter your gene list based on adjusted p-value or other metric. The GSEA algorithm was made to run on a non filtered list. Non significant genes must be part of this list.
+:::
+
+```{r}
+#| label: gene_list_gsea
+#| filename: gene_list_gsea
+
+# Extract only the results for cluster 1
+markers_list_clust1 <- markers_list |>
+                       filter(cluster == "1")
+
+# Create a list of avg_log2FC from the comparison
+list_gsea <- markers_list_clust1$avg_log2FC
+
+# Add gene symbols as names
+names(list_gsea) <- rownames(markers_list_clust1)
+
+# Sort this list in decreasing order
+list_gsea <- sort(list_gsea, decreasing = TRUE)
+
+head(list_gsea)
+```
+
+## Perform the enrichment
+
+The Gene Set Enrichment Analyses can be performed with the `GSEA()` function of clusterProfiler. Derivative functions such as `gseGO()`, `gseKEGG()` can be used for databases that can be loaded from packages. But you lose reproducibility with these functions when you change the package version.
+
+```{r}
+#| label: function_gsea
+#| filename: function_gsea
+
+?GSEA
+```
+
+```{r}
+#| label: perform_gsea
+#| filename: perform_gsea
+
+gsea <- GSEA(list_gsea, TERM2GENE = go_from_file)
+
+dotplot(gsea, title = "GO BP GSEA in cluster 1 vs cluster 8")
+```
+
+:::
+
+::: {layout-ncol=2}
+```{r}
+dotplot(ora_up, label_format = 40) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+dotplot(ora_down, label_format = 40) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+:::
+
+```{r}
+dotplot(gsea, font.size=8, showCategory=5, title =("GSEA Hallmark database"), split=".sign") + facet_grid(.~.sign)
+```
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What are the three inputs required to perform enrichment analyses?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+1.  Omics data : expression or statistics
+2.  A reference database: list of genes linked to a specific function
+3.  A statistic method to perform the enrichment
+:::
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What are the differences between ORA, GSEA and AUCell?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+-   **ORA** performs a fisher exact test on a non weighted list of genes selected using an arbitrary cut-off.
+-   **GSEA** performs a weighted Kolmogorov-Smirnov test on a gene list ordered by log2FC.
+-   **AUCell** calculates a score based on the proportion of genes from a gene set in the highly expressed genes for each cell.
+:::
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# Rsession
+
+For reproducibility and context, it is recommended to include in the Quart/Rmarkdown the list of loaded packages and their version.
+
+::: {.callout-important icon="false" style="background: pink"}
+## Session info
+
+You are not expected to run the following chunk ***BUT*** you are more than welcome to include it at the end of your own Rmardown / Quarto script ! It will help you for reproducible analyses and when writing your mat & meth for publications.
+
+```{r attr.output='.details summary="Output"'}
+#| code-fold: false
+#| label: rsession
+#| filename: rsession
+
+utils::sessionInfo()
+
+```
+:::
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# References
+
+::: {#refs}
+:::
