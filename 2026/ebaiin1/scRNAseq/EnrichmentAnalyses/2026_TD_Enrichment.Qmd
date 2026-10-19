@@ -152,7 +152,7 @@ cat('PATH CHECK : ', dir.exists(paste0('/shared/projects/', project_name))) # <2
 my_seed <- 42 # <3>
 ```
 
-1.  Uncomment this line and specify YOUR project name
+1.  Specify **YOUR** project name
 2.  Should return "PATH CHECK : TRUE" if project_name exists
 3.  You can choose another value before running analysis but if you change it, you'll get different results
 
@@ -167,6 +167,7 @@ We load the packages we will need for the analysis.
 ## TODO : libraries to load
 library(Seurat) # <1>
 library(clusterProfiler, quietly = TRUE) # <2> 
+library(AUCell)
 library(org.Mm.eg.db, quietly = TRUE) # <3>
 library(msigdbr, quietly = TRUE) # <4>
 library(dplyr, quietly = TRUE) # <5>
@@ -225,8 +226,10 @@ The R package clusterProfiler can work with compatible database packages such as
 xx <- as.list(org.Mm.egGO2EG)
 
 # It is not a table but a list of ontologies, each containing ENTREZID and source of evidence
-xx[[1]]
+xx[1]
 ```
+
+The first line indicates the Gene Ontology ID. The list contains numbers that correspond to ENTREZ ID of genes and [codes for GO evidences](https://geneontology.org/docs/guide-go-evidence-codes/).
 
 ## From the Web
 For other databases such as [KEGG](https://www.genome.jp/kegg/pathway.html) and [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/index.jsp), clusterProfiler can access them from the web using package dependencies.
@@ -351,20 +354,20 @@ background <- markers_list$gene
 # Select genes up
 list_ora_up <- markers_list |>
                filter(cluster == "1") |>
-               filter(p_val_adj < 0.01) |>
-               filter(avg_log2FC > 1)
+               filter(p_val_adj < 0.05) |>
+               filter(avg_log2FC > 0.5)
 
 list_ora_up <- rownames(list_ora_up)
 
 # Select genes down
 list_ora_down <- markers_list |>
                  filter(cluster == "1") |>
-                 filter(p_val_adj < 0.01) |>
-                 filter(avg_log2FC < -1)
+                 filter(p_val_adj < 0.05) |>
+                 filter(avg_log2FC < -0.5)
 
 list_ora_down <- rownames(list_ora_down)
 
-print(paste("There are", length(list_ora_up), "genes up and", length(list_ora_down), "genes down selected to run further analyses"))
+paste("There are", length(list_ora_up), "genes up and", length(list_ora_down), "genes down selected to run further analyses")
 ```
 
 ## Perform the enrichment
@@ -375,6 +378,7 @@ The Over Representation Analyses can be performed with the `enricher()` function
 #| label: function_ora
 #| filename: function_ora
 
+# Show enricher help page
 ?enricher
 ```
 
@@ -382,15 +386,14 @@ The Over Representation Analyses can be performed with the `enricher()` function
 #| label: perform_ora
 #| filename: perform_ora
 
+# Run ORA on up-regulated gene list
 ora_up <- enricher(list_ora_up, universe = background, TERM2GENE = go_from_file)
 
-dotplot(ora_up, title = "GO BP ORA on genes up in cluster 1 vs all")
-
+# Run ORA on down-regulated gene list
 ora_down <- enricher(list_ora_down, universe = background, TERM2GENE = go_from_file)
 
-dotplot(ora_down, title = "GO BP ORA on genes down in cluster 1 vs all")
-
-print(nrow(ora_up), "GO terms are enriched in up regulated genes and", nrow(ora_down), "GO terms are enriched in down regulated genes.")
+# Print the number of enriched terms
+paste(nrow(ora_up), "GO terms are enriched in up regulated genes and", nrow(ora_down), "GO terms are enriched in down regulated genes.")
 ```
 
 # Gene Set Enrichment Analyses (GSEA)
@@ -469,15 +472,87 @@ gsea <- GSEA(list_gsea, TERM2GENE = go_from_file)
 dotplot(gsea, title = "GO BP GSEA in cluster 1 vs cluster 8")
 ```
 
+# Cell specific enrichment (AUCell)
+
+## Prepare your list of genes
+
+You already have your gene set. You now need to extract genes before running your enrichment analyses.
+
+::: {.callout-note icon="false" style="background: lightblue"}
+## QUESTION
+
+What kind of input genes is needed to run AUCell?
+:::
+
+::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
+## ANSWER
+
+An expression matrix with genes in row and cells in column, not normalized.
+:::
+
+```{r}
+#| label: gene_list_aucell
+#| filename: gene_list_aucell
+
+# Select the count matrix
+count_matrix <- scdata[["RNA"]]$counts
+```
+
+::: {.callout-warning}
+
+AUCell does not work with the gene set in data.frame format but accept lists of gene sets. Before running the enrichment, we have to change the gene set list and we perform it on a small number of gene sets because it takes a lot of time.
+
+:::
+
+```{r}
+#| label: gene_set_aucell
+#| filename: gene_set_aucell
+
+# Create a list of gene sets
+tmp_dataframe <- go_from_file |>
+  group_by(term) |>
+  summarize(GOlist = list(gene)) %>% 
+  select(GOlist)
+go_from_file_aucell <- tmp_dataframe[[1]]
+names(go_from_file_aucell) <- unique(go_from_file$term)
+
+# Show the first three terms in the list
+go_from_file_aucell[1:3]
+
+# Because the AUCell calculation is really long, we only take a few number of gene sets to perform the enrichment
+go_from_file_aucell <- go_from_file_aucell[]
+```
+
+## Perform the enrichment
+
+The Cell specific enrichment can be performed with the `AUCell_run()` function of AUCell. It takes only gene sets as parameter. There is no derivative function to use gene set databases from packages.
+
+```{r}
+#| label: function_aucell
+#| filename: function_aucell
+
+# Show AUCell_run help page
+?AUCell_run
+```
+
+```{r}
+#| label: perform_aucell
+#| filename: perform_aucell
+
+cells_AUC <- AUCell_run(count_matrix, go_from_file_aucell)
+
+cells_AUC
+```
+
 :::
 
 ::: {layout-ncol=2}
 ```{r}
-dotplot(ora_up, label_format = 40) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+dotplot(ora_up, title = "GO BP ORA on genes up in cluster 1 vs all")
 ```
 
 ```{r}
-dotplot(ora_down, label_format = 40) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+dotplot(ora_down, title = "GO BP ORA on genes down in cluster 1 vs all")
 ```
 :::
 
