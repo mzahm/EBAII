@@ -114,7 +114,25 @@ This file describes the different steps to perform the **enrichment part** of th
 
 **Output data**: A list of gene set enriched
 
-A lot of different packages exist. Here, you will discover [clusterProfiler](https://yulab-smu.top/biomedical-knowledge-mining-book/), a widely used R package to perform enrichment analyses. You will also discover [AUCell](https://www.bioconductor.org/packages//3.18/bioc/vignettes/AUCell/inst/doc/AUCell.html) to perform cell based enrichment analyses.
+A lot of different packages exist. Here, you will try [clusterProfiler](https://yulab-smu.top/biomedical-knowledge-mining-book/), a widely used R package to perform enrichment analyses. You will also discover [AUCell](https://www.bioconductor.org/packages//3.18/bioc/vignettes/AUCell/inst/doc/AUCell.html) to perform cell based enrichment analyses.
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# What to run ? {#what-to-run}
+
+You are **not intended** to run all of the chunks. We use a **color code**:
+
+| What you see | What it means |
+|:----------|:----------|
+| A regular code chunk | **Run it** |
+| A [**lightblue**]{style="color:lightblue"} "QUESTION" callout | Think about it before unfolding the answer |
+| A [**lightgreen**]{style="color:lightgreen"} "ANSWER" callout | Folded by default |
+| A [**yellow**]{style="color:yellow"} / [**orange**]{style="color:orange"} "OPTIONAL" callout | Extra content if you are ahead, not supported during the session |
+| A [**pink**]{style="color:pink"} "DEMO" callout | Shown by the teacher, **do not run** |
+
+<br>
 
 ------------------------------------------------------------------------
 
@@ -128,72 +146,163 @@ Using the [OpenOnDemand/Rstudio cheat sheet](https://moodle.france-bioinformatiq
 
 ------------------------------------------------------------------------
 
-# Environment
+# Warm-up
 
-## Set parameters
+## Load the packages
 
-We now set common parameters as new variables, once and for all for this session :
+```{r, message=FALSE}
+#| label: load_libraries
+#| filename: load_libraries
 
-::: callout-warning
-**DO NOT** just run this with `ebaii_sc_teachers` project name as-is, put **YOURS** !
-:::
+## TODO : libraries to load
+library(Seurat)
+library(clusterProfiler, quietly = TRUE)
+library(AUCell)
+library(org.Mm.eg.db, quietly = TRUE)
+library(msigdbr, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+
+```
+
+## Common parameters
 
 ```{r}
+#| label: set_param
+#| filename: set_param
+
+## Seed for the random number generator
+my_seed <- 1337L
+
+## A common look for all the figures of this session
+theme_set(theme_minimal(base_size = 13))
+```
+
+## Directories and input data
+
+::: {.callout-warning}
+`ebaii_sc_teachers` is a project created by and for us, teachers.
+
+Thus, **DO NOT** just copy-paste this `ebaii_sc_teachers` project name as-is, put **YOURS** !
+:::
+
+``` {r}
 #| label: fs_set_pjname
 #| filename: fs_set_pjname
 
 ## Set your project name
-project_name <- "ebaii_sc_teachers" # <1>
+project_name <- "ebaii_sc_teachers"
 
-## Control if the project_name exists on the cluster
-cat('PATH CHECK : ', dir.exists(paste0('/shared/projects/', project_name))) # <2>
+## Check that it exists
+file.exists(paste0("/shared/projects/", project_name))
 
-## Seed for the GSEA
-my_seed <- 42 # <3>
 ```
 
-1.  Specify **YOUR** project name
-2.  Should return "PATH CHECK : TRUE" if project_name exists
-3.  You can choose another value before running analysis but if you change it, you'll get different results
+:::{.callout-important}
+If this chunk returned `FALSE`, you may have misspelled your project name !
+:::
 
-## Load all needed libraries
-
-We load the packages we will need for the analysis.
-
-```{r, message=FALSE}
-#| label: load_environment 
-#| filename: load_environment  
-
-## TODO : libraries to load
-library(Seurat) # <1>
-library(clusterProfiler, quietly = TRUE) # <2> 
-library(AUCell)
-library(org.Mm.eg.db, quietly = TRUE) # <3>
-library(msigdbr, quietly = TRUE) # <4>
-library(dplyr, quietly = TRUE) # <5>
-library(ggplot2, quietly = TRUE)  # <6>
-```
-
-1.  For scRNAseq analyses
-2.  Perform enrichment analysis [@yuBiomedicalKnowledgeMining2025]
-3.  Mouse genes with identifier correspondences. Other organisms are accessible []
-4.  Package to download MSigDB database from the web.
-5.  Perform table modifications
-6.  Perform graphics
-
-## Load your data
-
-**TO DO** based on bjob function
+We build the directories of this session in one go (they were explained in Preprocessing 1):
 
 ```{r}
-#| label: dirty_load
-#| filename: dirty_load
+#| label: fs_set_dirs
+#| filename: fs_set_dirs
+#| message: true
 
-scdata <- readRDS("/shared/projects/2621_eb3in1_2026/atelier_scrnaseq/DATA_BACKUP/INTERMEDIATE/12_TD3A.TDCT_S5_Integrated_12926.3886.RDS")
-scdata[["RNA"]] <- JoinLayers(scdata[["RNA"]])
-DimPlot(scdata)
+## Main training directory
+TD_dir <- paste0("/shared/projects/", project_name, "/SC_TD")
+
+## Current session (Enrich) directory, with its input and output sub-directories
+session_dir <- paste0(TD_dir, "/08_Enrichment")
+input_dir <- paste0(session_dir, "/DATA")
+output_dir <- paste0(session_dir, "/RESULTS")
+dir.create(path = input_dir, recursive = TRUE)
+dir.create(path = output_dir, recursive = TRUE)
+
+message('Directory [', session_dir, '] created.')
 
 ```
+
+We load the functions that fetch the input data:
+
+```{r}
+#| label: fetch_src
+#| filename: fetch_src
+#| attr.output: '.details summary="Show output"'
+
+source(
+  file = "/shared/projects/2621_eb3in1_2026/atelier_scrnaseq/SOURCES/fetch_functions.R",
+  echo = TRUE
+)
+
+## Folder of the backup of all intermediate Seurat objects
+backup_dir <- "/shared/projects/2621_eb3in1_2026/atelier_scrnaseq/DATA_BACKUP/INTERMEDIATE"
+
+```
+
+We load the Seurat object saved at the end of the previous session. If you do not have it (error, lost file...), a copy is fetched from the backup:
+
+```{r}
+#| label: data_load
+#| filename: data_load
+
+## The Seurat object saved at the end of 06_Integration
+sobj_file <- "12_TD3A.TDCT_S5_Integrated_12926.3886.RDS" # TODO Set the correct name of file and folder
+sobj_path <- paste0(TD_dir, "/06_Integration/RESULTS/", sobj_file)  # <1>
+
+## If it does not exist, copy it from the backup
+if (!file.exists(sobj_path)) {
+  sobj_path <- backup_get_data(
+    backup_file = paste0(backup_dir, "/", sobj_file),  # <2>
+    local_path = input_dir)
+}
+
+## Load the object
+sobj <- readRDS(file = sobj_path)
+sobj
+
+## The differential results saved at the end of DEA
+# sobj_file <- "05_TD3A_S5_Doublets.Filtered_12508.4035.RDS" # TODO Set the correct name of file and folder
+# sobj_path <- paste0(TD_dir, "/08_Enrichment/TMP/", sobj_file)  # <1>
+# 
+# ## If it does not exist, copy it from the backup
+# if (!file.exists(sobj_path)) {
+#   sobj_path <- backup_get_data(
+#     backup_file = paste0(backup_dir, "/", sobj_file),  # <2>
+#     local_path = input_dir)
+# }
+# 
+# ## Load the object
+# sobj <- read.table(file = sobj_path, sep = ",", header = T)
+# sobj
+
+
+
+```
+
+1.  Where your own object from DEA should be
+2.  The backup copy, copied into your `DATA` directory
+
+We also prepare a small function to save the objects of this session with the naming convention of the course (step number, sample, step name, comparison, enrichment test):
+
+```{r}
+#| label: save_func
+#| filename: save_func
+
+save_step <- function(object, step_number, step_name, comparison, enrichment_test) {
+  out_name <- paste0(
+    output_dir, "/",
+    paste(
+      c(step_number, Seurat::Project(object), step_name, comparison, enrichment_test),
+      collapse = "_"),
+    ".tsv")
+  write.table(object, file = out_name, sep = "\t", row.names = FALSE)
+  message("Saved [", out_name, "]")
+}
+
+```
+
+For example, `save_step(ora_results, "07", "Enrichment", "clust1VSall", "ORA")` will write a table called `07_TD3A_Enrichment_clust1VSall_ORA.tsv`.
 
 ------------------------------------------------------------------------
 
@@ -210,7 +319,7 @@ What is a gene set?
 ::: {.callout-note icon="false" collapse="true" style="background: lightgreen"}
 ## ANSWER
 
-It is a list of genes linked to a biological insight like a function, a transcription factor, a cell type...
+It is a list of genes linked to a biological insight like a function, a transcription factor, a cell type, a comparison between two conditions...
 :::
 
 There are multiple ways for loading them.
