@@ -1,0 +1,260 @@
+---
+title: "<CENTER>EB3I n1 2025 scRNAseq<BR>-<BR><B>Enrichment Analyses</B><BR>-<BR>What the hell are those genes?</CENTER>"
+date: "2026-11-18"
+author:
+  - name: "EB3I n1 scRNAseq Team"
+  - name: "Margot ZAHM"
+    email: "margot.zahm@inserm.fr" 
+  - name: "Contributors : Léa BELLENGER, Bastien JOB & Thibault DAYRIS"
+    email: "lea.bellenger@univ-nantes.fr; bastien.job@gustaveroussy.fr; thibault.dayris@gustaveroussy.fr" 
+lightbox: 
+  match: auto  ## Quarto internal functionality to display a screen maxed-out version of images and plots by click
+format:
+  revealjs:
+    theme: _assets/zephyr.scss  # Le thème demandé
+    transition: none       # Transition fluide entre les slides
+    slide-number: true      # Numéro de slide en bas à droite
+    zoom: true              # Active le zoom sur les images (clic droit ou cmd+click)
+    width: 1280             # Largeur par défaut pour HD
+    height: 720             # Hauteur par défaut pour HD
+    date-format: long
+    
+    # Intégration des fichiers personnalisés
+    css: [_assets/custom.css]
+    template-partials:
+      - _assets/title-slide.html
+
+    # Configuration des blocs de code pour présentations
+    code-fold: show
+    code-line-numbers: true
+    code-block-bg: true
+    code-block-border-left: "#31BAE9"
+    code-overflow: wrap
+    fig-width: 8
+    fig-height: 6
+    number-sections: true
+    anchor-sections: true
+    smooth-scroll: true
+    logo: "_imgs/EB3I_logo.png"
+    footer: "Ecole de bioinformatique IFB – Inserm - INRAE Niveau1"
+
+    # Configuration des schémas mermaid: 
+    mermaid: 
+      theme: neutral
+    min-scale: 1.2 # pour régler problème de rendu des diagrammes
+    max-scale: 1.2
+---
+
+:::: {.columns}
+
+::: {.column width="50%"}
+*From a volcano plot*
+:::
+
+::: {.column width="50%"}
+*To an enrichment dotplot*
+:::
+
+::::
+
+::: {layout-ncol=2 .fragment}
+![](_imgs/volcano.png){fig-align="left" fig-cap-location="top"}
+
+![](_imgs/enrichment.png){fig-align="right" fig-cap-location="top"}
+:::
+
+. . .
+
+The principle of **enrichment analyses** is to try to **summarize a list of genes** using gene sets linked to **known biological information**.
+
+## Workflow
+
+:::: {.columns}
+
+::: {.column width="60%" .diagram}
+
+```{mermaid}
+flowchart TB
+  A[Genes of interest]
+  A -->B{Enrichment Test}
+  C[Knowledge database] --> B
+  B --> D[Enrichment results]
+```
+
+:::
+
+::: {.column width="40%" .fragment .text}
+
+You need 3 elements to run an enrichment analyses :
+
+- genes of interest (*ex: DEG*)
+- a knowledge database (*ex: Gene Ontology*)
+- an enrichment test (*ex: GSEA*)
+
+The different elements of the workflow are defined based on the other ones. 
+
+:::
+
+::::
+
+## Over Representation Analyses
+
+[The Over-Representation Analyses aims to compare the proportion of genes belonging to a function in your genes of interest compared to a background.]{.text}
+
+<div class="r-stack">
+  <div class="fragment" style="width: 100%; max-width: 800px; margin: 0 auto;">
+```{mermaid}
+flowchart LR
+  subgraph GENES OF INTEREST
+    volcano@{ img: "_imgs/volcano_select.png", label: "Selected genes", h: 120, constraint: "on"}
+  end
+  subgraph KNOWLEDGE DATABASE
+    db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
+  end
+  subgraph ENRICHMENT TEST
+    test{Fisher’s exact tests}
+  end
+  volcano --> test
+  db --> test
+```
+</div>
+<div class="fade-out">
+![](_imgs/ORA.png){fig-align="center" .fragment width=67%}
+</div>
+<div class="fragment" style="width: 100%; max-width: 2000px; margin: 0 auto;">
+```{mermaid}
+%%| fig-align: center
+flowchart LR
+  subgraph GENES OF INTEREST
+    volcano@{ img: "_imgs/volcano_select.png", label: "Selected genes", h: 120, constraint: "on"}
+  end
+  subgraph KNOWLEDGE DATABASE
+    db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
+  end
+  subgraph ENRICHMENT TEST
+    test{Fisher’s exact tests}
+  end
+  subgraph ENRICHMENT RESULTS
+    FDR@{ img: "_imgs/ORA_results.png", label: "Any list of genes", h: 120, constraint: "on" }
+  end
+  volcano --> test
+  db --> test
+  test --> FDR
+```
+</div>
+</div>
+
+## Gene Set Enrichment Analyses (GSEA)
+
+[Gene Set Enrichment Analyses consist on **performing a rank test** on you gene list **not filtered** and **ordered**.]{.text}
+
+<div class="r-stack">
+  <div class="fragment" style="width: 100%; max-width: 800px; margin: 0 auto;">
+```{mermaid}
+flowchart LR
+  subgraph GENES OF INTEREST
+    volcano@{ img: "_imgs/ranked.png", label: "Ranked gene list", h: 120, constraint: "on"}
+  end
+  subgraph KNOWLEDGE DATABASE
+    db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
+  end
+  subgraph ENRICHMENT TEST
+    test{Kolmogorov–Smirnov-like<br>test}
+  end
+  volcano --> test
+  db --> test
+```
+</div>
+<div class="fade-out">
+![](_imgs/GSEA.png){fig-align="center" .fragment width=75%}
+</div>
+<div class="fragment" style="width: 100%; max-width: 2000px; margin: 0 auto;">
+```{mermaid}
+%%| fig-align: center
+flowchart LR
+  subgraph GENES OF INTEREST
+    volcano@{ img: "_imgs/ranked.png", label: "Ranked gene list", h: 120, constraint: "on"}
+  end
+  subgraph KNOWLEDGE DATABASE
+    db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
+  end
+  subgraph ENRICHMENT TEST
+    test{Kolmogorov–Smirnov-like<br>test}
+  end
+  subgraph ENRICHMENT RESULTS
+    FDR@{ img: "_imgs/GSEA_results.png", label: "Any list of genes", h: 120, constraint: "on" }
+  end
+  volcano --> test
+  db --> test
+  test --> FDR
+```
+</div>
+</div>
+
+## Summary
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{mermaid}
+flowchart TB
+  A[Genes of interest]
+  A -->B[Enrichment Test]
+  C[Knowledge database] --> B
+  B --> D{Enrichment results}
+```
+
+:::
+
+::: {.column width="50%" .text .fragment}
+
+| Test | Input  | Output |
+|:-----|:------:|-------------------:|
+| ORA  | genes selected by cut-off   | FDR and ratio of genes |
+| GSEA | all genes ranked by a measurement | FDR and enrichment score |
+
+
+:::
+
+::::
+
+## Limitations on knowledge databases 
+
+::: {.text}
+- Change frequently and can lead to a reproducibility issue
+- Small gene sets tend to be less significant that large gene sets
+- Not all the organisms have the same level of knowledge
+- A lot of genes are not studied
+:::
+
+## Limitations on tests
+
+:::: {.columns .text}
+
+::: {.column width="50%"}
+
+**ORA**
+
+- Needs a cut-off to select genes of interest
+- Highly sensitive to background
+- Same weight for each gene
+
+:::
+
+::: {.column width="50%" .fragment}
+
+**GSEA**
+
+- There is the same weight for 2 genes that follow in the list, independently of their measurement
+
+:::
+
+::::
+
+::: {.fragment .text}
+**Common**
+
+- Genes and pathways are independent
+- Analyses are not based on cell type or condition
+:::
