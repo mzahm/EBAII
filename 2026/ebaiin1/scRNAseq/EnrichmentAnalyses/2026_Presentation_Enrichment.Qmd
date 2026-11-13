@@ -32,7 +32,7 @@ format:
     code-overflow: wrap
     fig-width: 8
     fig-height: 6
-    number-sections: true
+    number-sections: false
     anchor-sections: true
     smooth-scroll: true
     logo: "_imgs/EB3I_logo.png"
@@ -101,27 +101,33 @@ The different elements of the workflow are defined based on the other ones.
 
 [The Over-Representation Analyses aims to compare the proportion of genes belonging to a function in your genes of interest compared to a background.]{.text}
 
-<div class="r-stack">
-  <div class="fragment" style="width: 100%; max-width: 800px; margin: 0 auto;">
 ```{mermaid}
+%%| fig-align: center
 flowchart LR
   subgraph GENES OF INTEREST
-    volcano@{ img: "_imgs/volcano_select.png", label: "Selected genes", h: 120, constraint: "on"}
+   %%volcano@{ img: "_imgs/volcano_select.png", label: "Selected genes", h: 120, constraint: "on"}
+   volcano@{img: "_imgs/volcano_select.png", label: "Selected genes"}
   end
   subgraph KNOWLEDGE DATABASE
-    db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
+    %%db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
   end
   subgraph ENRICHMENT TEST
     test{Fisher’s exact tests}
   end
   volcano --> test
-  db --> test
+  %%db --> test
 ```
-</div>
-<div class="fade-out">
-![](_imgs/ORA.png){fig-align="center" .fragment width=67%}
-</div>
-<div class="fragment" style="width: 100%; max-width: 2000px; margin: 0 auto;">
+
+## Over Representation Analyses
+
+[The Over-Representation Analyses aims to compare the proportion of genes belonging to a function in your genes of interest compared to a background.]{.text}
+
+![](_imgs/ORA.png){fig-align="center" width=67%}
+
+## Over Representation Analyses
+
+[The Over-Representation Analyses aims to compare the proportion of genes belonging to a function in your genes of interest compared to a background.]{.text}
+
 ```{mermaid}
 %%| fig-align: center
 flowchart LR
@@ -141,8 +147,6 @@ flowchart LR
   db --> test
   test --> FDR
 ```
-</div>
-</div>
 
 ## Gene Set Enrichment Analyses (GSEA)
 
@@ -209,52 +213,29 @@ flowchart TB
 
 ::: {.column width="50%" .text .fragment}
 
-| Test | Input  | Output |
-|:-----|:------:|-------------------:|
-| ORA  | genes selected by cut-off   | FDR and ratio of genes |
-| GSEA | all genes ranked by a measurement | FDR and enrichment score |
+| Test | Input  | (some) Output |
+|:-----|:------:|-------:|
+| ORA  | genes selected by cut-off   | FDR, ratio of genes, genes in gene list and gene set |
+| GSEA | all genes ranked by a measurement | FDR, enrichment score, leading edge genes |
 
 
 :::
 
 ::::
 
-## Limitations on knowledge databases 
+## Limitations
 
 ::: {.text}
-- Change frequently and can lead to a reproducibility issue
+- Databases change frequently and can lead to a reproducibility issue
 - Small gene sets tend to be less significant that large gene sets
+- Independence assumption on genes and on gene sets
+- The gene set does not adapt to your cell type or condition
 - Not all the organisms have the same level of knowledge
 - A lot of genes are not studied
 :::
 
-## Limitations on tests
+## References
 
-:::: {.columns .text}
+::: {#refs}
 
-::: {.column width="50%"}
-
-**ORA**
-
-- Needs a cut-off to select genes of interest
-- Highly sensitive to background
-- Same weight for each gene
-
-:::
-
-::: {.column width="50%" .fragment}
-
-**GSEA**
-
-- There is the same weight for 2 genes that follow in the list, independently of their measurement
-
-:::
-
-::::
-
-::: {.fragment .text}
-**Common**
-
-- Genes and pathways are independent
-- Analyses are not based on cell type or condition
 :::
