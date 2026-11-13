@@ -45,23 +45,14 @@ format:
     max-scale: 1.2
 ---
 
-:::: {.columns}
+From Volcano Plot
+![](_imgs/volcano.png){fig-align="left" fig-cap-location="top" width=75%}
 
-::: {.column width="50%"}
-*From a volcano plot*
-:::
+---
 
-::: {.column width="50%"}
-*To an enrichment dotplot*
-:::
-
-::::
-
-::: {layout-ncol=2 .fragment}
-![](_imgs/volcano.png){fig-align="left" fig-cap-location="top"}
-
+To enrichment results
+<br>
 ![](_imgs/enrichment.png){fig-align="right" fig-cap-location="top"}
-:::
 
 . . .
 
@@ -102,20 +93,18 @@ The different elements of the workflow are defined based on the other ones.
 [The Over-Representation Analyses aims to compare the proportion of genes belonging to a function in your genes of interest compared to a background.]{.text}
 
 ```{mermaid}
-%%| fig-align: center
 flowchart LR
   subgraph GENES OF INTEREST
-   %%volcano@{ img: "_imgs/volcano_select.png", label: "Selected genes", h: 120, constraint: "on"}
-   volcano@{img: "_imgs/volcano_select.png", label: "Selected genes"}
+    volcano@{ img: "_imgs/volcano_select.png", label: "Selected genes", h: 120, constraint: "on"}
   end
   subgraph KNOWLEDGE DATABASE
-    %%db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
+    db@{ img: "_imgs/databases.png", label: "Any list of genes", h: 120, constraint: "on" }
   end
   subgraph ENRICHMENT TEST
     test{Fisher’s exact tests}
   end
   volcano --> test
-  %%db --> test
+  db --> test
 ```
 
 ## Over Representation Analyses
@@ -152,8 +141,6 @@ flowchart LR
 
 [Gene Set Enrichment Analyses consist on **performing a rank test** on you gene list **not filtered** and **ordered**.]{.text}
 
-<div class="r-stack">
-  <div class="fragment" style="width: 100%; max-width: 800px; margin: 0 auto;">
 ```{mermaid}
 flowchart LR
   subgraph GENES OF INTEREST
@@ -168,11 +155,17 @@ flowchart LR
   volcano --> test
   db --> test
 ```
-</div>
-<div class="fade-out">
-![](_imgs/GSEA.png){fig-align="center" .fragment width=75%}
-</div>
-<div class="fragment" style="width: 100%; max-width: 2000px; margin: 0 auto;">
+
+## Gene Set Enrichment Analyses (GSEA)
+
+[Gene Set Enrichment Analyses consist on **performing a rank test** on you gene list **not filtered** and **ordered**.]{.text}
+
+![](_imgs/GSEA.png){fig-align="center" width=60%}
+
+## Gene Set Enrichment Analyses (GSEA)
+
+[Gene Set Enrichment Analyses consist on **performing a rank test** on you gene list **not filtered** and **ordered**.]{.text}
+
 ```{mermaid}
 %%| fig-align: center
 flowchart LR
@@ -192,14 +185,8 @@ flowchart LR
   db --> test
   test --> FDR
 ```
-</div>
-</div>
 
 ## Summary
-
-:::: {.columns}
-
-::: {.column width="50%"}
 
 ```{mermaid}
 flowchart TB
@@ -209,33 +196,24 @@ flowchart TB
   B --> D{Enrichment results}
 ```
 
-:::
-
-::: {.column width="50%" .text .fragment}
+## Summary
 
 | Test | Input  | (some) Output |
 |:-----|:------:|-------:|
 | ORA  | genes selected by cut-off   | FDR, ratio of genes, genes in gene list and gene set |
 | GSEA | all genes ranked by a measurement | FDR, enrichment score, leading edge genes |
 
+. . .
 
-:::
-
-::::
+Other enrichment tests exist and could also be used depending on the input data (database information and gene list format)
 
 ## Limitations
 
 ::: {.text}
-- Databases change frequently and can lead to a reproducibility issue
+- Highly sensitive to database content (! database update)
 - Small gene sets tend to be less significant that large gene sets
 - Independence assumption on genes and on gene sets
 - The gene set does not adapt to your cell type or condition
 - Not all the organisms have the same level of knowledge
 - A lot of genes are not studied
-:::
-
-## References
-
-::: {#refs}
-
 :::
